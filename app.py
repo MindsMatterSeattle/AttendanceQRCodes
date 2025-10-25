@@ -13,6 +13,7 @@ app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+port = os.environ.get("PORT")
 
 # Ensure directories exist
 os.makedirs('volunteers', exist_ok=True)
@@ -182,4 +183,4 @@ def clear_files():
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=port)
