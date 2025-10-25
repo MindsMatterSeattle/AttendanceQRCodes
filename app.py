@@ -153,7 +153,7 @@ def download_all():
                     if filename.endswith('.png'):
                         file_path = os.path.join(volunteers_dir, filename)
                         zip_file.write(file_path, filename)
-        
+        clear_files()
         return send_file(temp_zip.name, 
                         as_attachment=True, 
                         download_name='qr_codes.zip',
@@ -182,5 +182,10 @@ def clear_files():
     
     return redirect(url_for('index'))
 
+def run():
+    app.run(debug=True, host='0.0.0.0', port=port)
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=port)
+    
+    
