@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>QR Code Generator</h1>
+<p style="text-align: center; color: #666; margin-bottom: 30px;">
+    Generate QR codes for email addresses using manual entry or CSV upload
+</p>
+
+<form action="{{ url_for('generate_qr_codes') }}" method="post" enctype="multipart/form-data">
+    <div class="form-group">
+        <label for="manual_emails">Enter Email Addresses Manually:</label>
+        <textarea id="manual_emails" name="manual_emails" 
+                  placeholder="Enter email addresses, one per line or separated by commas:&#10;john.doe@example.com&#10;jane.smith@example.com"></textarea>
+        <div class="help-text">
+            Enter one email address per line, or separate multiple addresses with commas
+        </div>
+    </div>
+
+    <div class="or-divider">
+        <span>OR</span>
+    </div>
+
+    <div class="form-group">
+        <label for="csv_file">Upload CSV File:</label>
+        <input type="file" id="csv_file" name="csv_file" accept=".csv">
+        <div class="help-text">
+            Upload a CSV file containing email addresses. The system will automatically detect and extract email addresses from any column.
+        </div>
+    </div>
+
+    <div style="margin-top: 30px;">
+        <button type="submit" class="btn">Generate QR Codes</button>
+        <a href="{{ url_for('clear_files') }}" class="btn btn-danger" 
+           onclick="return confirm('Are you sure you want to clear all generated QR codes?')">
+            Clear All QR Codes
+        </a>
+    </div>
+</form>
+
+<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd;">
+    <h3>Instructions:</h3>
+    <ul style="color: #666;">
+        <li><strong>Manual Entry:</strong> Type or paste email addresses in the text area above</li>
+        <li><strong>CSV Upload:</strong> Upload a CSV file containing email addresses in any column</li>
+        <li><strong>Mixed Input:</strong> You can use both methods simultaneously - all email addresses will be processed</li>
+        <li>Duplicate email addresses will be automatically removed</li>
+        <li>Generated QR codes will be saved in the 'volunteers' folder</li>
+        <li>You can download all generated QR codes as a zip file from the results page</li>
+    </ul>
+</div>
+{% endblock %}
