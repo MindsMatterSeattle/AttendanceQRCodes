@@ -9,6 +9,7 @@ from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.colormasks import VerticalGradiantColorMask
 import zipfile
 import tempfile
+import re
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
@@ -81,23 +82,28 @@ def extract_emails_from_csv(file_content):
     
     return emails
 
+def parse_manual_emails(text):
+    for token in re.split(r'[\s,;]+', text):
+        email = token.strip()
+        if email and '@' in email and '.' in email:
+            yield email
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/generate', methods=['POST'])
 def generate_qr_codes():
-    emails = []
-    
-    # Get emails from manual input
+    unique_emails = []
+    seen = set()
+
     manual_emails = request.form.get('manual_emails', '').strip()
     if manual_emails:
-        # Split by newlines and commas, clean up
-        for email in manual_emails.replace(',', '\n').split('\n'):
-            email = email.strip()
-            if email and '@' in email:
-                emails.append(email)
-    
+        for email in parse_manual_emails(manual_emails):
+            if email not in seen:
+                seen.add(email)
+                unique_emails.append(email)
+
     # Get emails from uploaded CSV
     if 'csv_file' in request.files:
         file = request.files['csv_file']
@@ -105,18 +111,18 @@ def generate_qr_codes():
             try:
                 file_content = file.read()
                 csv_emails = extract_emails_from_csv(file_content)
-                emails.extend(csv_emails)
+                unique_emails.extend(csv_emails)
             except Exception as e:
                 flash(f'Error reading CSV file: {str(e)}')
                 return redirect(url_for('index'))
     
     # Remove duplicates while preserving order
-    unique_emails = []
-    for email in emails:
-        if email not in unique_emails:
-            unique_emails.append(email)
+    final_emails = []
+    for email in unique_emails:
+        if email not in final_emails:
+            final_emails.append(email)
     
-    if not unique_emails:
+    if not final_emails:
         flash('No valid email addresses found. Please check your input.')
         return redirect(url_for('index'))
     
@@ -124,7 +130,7 @@ def generate_qr_codes():
     generated_files = []
     failed_emails = []
     
-    for email in unique_emails:
+    for email in final_emails:
         filepath = generate_qr_code(email)
         if filepath:
             generated_files.append((email, filepath))
@@ -191,5 +197,4 @@ def run():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=port)
-    
-    
+
