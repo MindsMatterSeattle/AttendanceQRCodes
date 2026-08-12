@@ -1,6 +1,7 @@
 import os
 import csv
 import io
+import sys
 from flask import Flask, request, render_template, flash, redirect, url_for, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 import qrcode
@@ -28,24 +29,27 @@ def generate_qr_code(email):
         
         # Check if logo exists, if not generate without it
         logo_path = "logo.png" if os.path.exists("logo.png") else None
-
-        if logo_path:
-            img = qr.make_image(
-                image_factory=StyledPilImage, 
-                color_mask=VerticalGradiantColorMask(
-                    bottom_color=(0, 0, 0), 
-                    top_color=(0, 56, 150)
-                ), 
-                embeded_image_path=logo_path
-            )
-        else:
-            img = qr.make_image(
-                image_factory=StyledPilImage, 
-                color_mask=VerticalGradiantColorMask(
-                    bottom_color=(0, 0, 0), 
-                    top_color=(0, 56, 150)
+        try:
+            if logo_path:
+                img = qr.make_image(
+                    image_factory=StyledPilImage, 
+                    color_mask=VerticalGradiantColorMask(
+                        bottom_color=(0, 0, 0), 
+                        top_color=(0, 56, 150)
+                    ), 
+                    embeded_image_path=logo_path
                 )
-            )
+            else:
+                img = qr.make_image(
+                    image_factory=StyledPilImage, 
+                    color_mask=VerticalGradiantColorMask(
+                        bottom_color=(0, 0, 0), 
+                        top_color=(0, 56, 150)
+                    )
+                )
+        except:
+            type, value, traceback = sys.exc_info()
+            print('Exception of type ', type, 'ocurred.', value.strerror)
         
         filepath = f"volunteers/{email}.png"
         img.save(filepath)
