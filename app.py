@@ -1,6 +1,7 @@
 import os
 import csv
 import io
+import re
 import sys
 from flask import Flask, request, render_template, flash, redirect, url_for, send_file, send_from_directory
 from werkzeug.utils import secure_filename
@@ -15,6 +16,7 @@ app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+MAX_MANUAL_EMAILS = 50
 port = os.environ.get("PORT")
 
 # Ensure directories exist
@@ -48,12 +50,16 @@ def generate_qr_code(email):
                         top_color=(0, 56, 150)
                     )
                 )
-        except:
-            type, value, traceback = sys.exc_info()
-            print('Exception of type ', type, 'ocurred.', value.strerror)
+        except Exception as e:
+            print(f'Error generating QR code for {email}: {e}')
+            return None
         
         filepath = f"volunteers/{email}.png"
         img.save(filepath)
+        try:
+            img.close()
+        except Exception:
+            pass
         return filepath
     except Exception as e:
         print(f"Error generating QR code for {email}: {str(e)}")
@@ -124,6 +130,10 @@ def generate_qr_codes():
     
     if not final_emails:
         flash('No valid email addresses found. Please check your input.')
+        return redirect(url_for('index'))
+
+    if len(final_emails) > MAX_MANUAL_EMAILS:
+        flash(f'Manual entry is limited to {MAX_MANUAL_EMAILS} unique email addresses. Please use CSV upload for larger batches.')
         return redirect(url_for('index'))
     
     # Generate QR codes
