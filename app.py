@@ -1,8 +1,11 @@
 import os
 import csv
 import io
+import json
 import re
 import sys
+import uuid
+from datetime import datetime
 from flask import Flask, request, render_template, flash, redirect, url_for, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 import qrcode
@@ -10,18 +13,18 @@ from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.colormasks import VerticalGradiantColorMask
 import zipfile
 import tempfile
-import re
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 MAX_MANUAL_EMAILS = 50
-port = os.environ.get("PORT")
+TASKS_DIR = 'task_queue'
 
-# Ensure directories exist
 os.makedirs('volunteers', exist_ok=True)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(TASKS_DIR, exist_ok=True)
+port = os.environ.get("PORT")
 
 def generate_qr_code(email):
     """Generate QR code for an email address"""
@@ -67,6 +70,35 @@ def generate_qr_code(email):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() == 'csv'
+
+def task_file_path(task_id):
+    return os.path.join(TASKS_DIR, f"{task_id}.json")
+
+def save_task(task):
+    with open(task_file_path(task['id']), 'w', encoding='utf-8') as f:
+        json.dump(task, f, indent=2)
+
+def load_task(task_id):
+    path = task_file_path(task_id)
+    if not os.path.exists(path):
+        return None
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def enqueue_task(emails):
+    task_id = uuid.uuid4().hex
+    task = {
+        'id': task_id,
+        'status': 'queued',
+        'created_at': datetime.utcnow().isoformat() + 'Z',
+        'updated_at': datetime.utcnow().isoformat() + 'Z',
+        'email_count': len(emails),
+        'emails': emails,
+        'generated_files': [],
+        'failed_emails': [],
+    }
+    save_task(task)
+    return task_id
 
 def extract_emails_from_csv(file_content):
     """Extract email addresses from CSV content"""
@@ -135,29 +167,19 @@ def generate_qr_codes():
     if len(final_emails) > MAX_MANUAL_EMAILS:
         flash(f'Manual entry is limited to {MAX_MANUAL_EMAILS} unique email addresses. Please use CSV upload for larger batches.')
         return redirect(url_for('index'))
-    
-    # Generate QR codes
-    generated_files = []
-    failed_emails = []
-    
-    for email in final_emails:
-        filepath = generate_qr_code(email)
-        if filepath:
-            generated_files.append((email, filepath))
-        else:
-            failed_emails.append(email)
-    
-    if failed_emails:
-        flash(f'Failed to generate QR codes for: {", ".join(failed_emails)}')
-    
-    if generated_files:
-        flash(f'Successfully generated {len(generated_files)} QR codes!')
-        return render_template('results.html', 
-                             generated_files=generated_files, 
-                             failed_emails=failed_emails)
-    else:
-        flash('No QR codes were generated successfully.')
+
+    task_id = enqueue_task(final_emails)
+    flash(f'Your request has been queued for background processing. Task ID: {task_id}')
+    return render_template('queued.html', task_id=task_id, email_count=len(final_emails))
+
+@app.route('/task/<task_id>')
+def task_status(task_id):
+    task = load_task(task_id)
+    if not task:
+        flash('Task not found.')
         return redirect(url_for('index'))
+
+    return render_template('task_status.html', task=task)
 
 @app.route('/download_all')
 def download_all():
