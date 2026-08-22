@@ -16,7 +16,7 @@ app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-MAX_MANUAL_EMAILS = 50
+MAX_EMAILS = 10
 port = os.environ.get("PORT")
 
 # Ensure directories exist
@@ -132,8 +132,8 @@ def generate_qr_codes():
         flash('No valid email addresses found. Please check your input.')
         return redirect(url_for('index'))
 
-    if len(final_emails) > MAX_MANUAL_EMAILS:
-        flash(f'Manual entry is limited to {MAX_MANUAL_EMAILS} unique email addresses. Please use CSV upload for larger batches.')
+    if len(final_emails) > MAX_EMAILS:
+        flash(f'No more than {MAX_EMAILS} emails can be processed at a time.')
         return redirect(url_for('index'))
     
     # Generate QR codes
